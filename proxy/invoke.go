@@ -8,17 +8,35 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
 // InvokeFunction a function
-func InvokeFunction(gateway string, name string, bytesIn *[]byte, contentType string) (*[]byte, error) {
+func InvokeFunction(gateway string, name string, query []string, bytesIn *[]byte, contentType string) (*[]byte, error) {
 	var resBytes []byte
 
 	gateway = strings.TrimRight(gateway, "/")
 
+	funcURL, err := url.Parse(gateway + "/function/" + name)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if query != nil {
+		q := u.Query()
+		for _, valueStr := range query {
+			value := strings.Split(valueStr, "=")
+			if len(value) != 2 {
+				return nil, fmt.Errorf("Wrong query format, should key=value %s", valueStr)
+			}
+			q.Add(value[0], value[1])
+		}
+		funcURL.RawQuery = q.Encode()
+	}
+
 	reader := bytes.NewReader(*bytesIn)
-	res, err := http.Post(gateway+"/function/"+name, contentType, reader)
+	res, err := http.Post(funcURL.String(), contentType, reader)
 	if err != nil {
 		fmt.Println()
 		fmt.Println(err)
